@@ -27,11 +27,11 @@ allprojects {
         maven { url 'https://www.jitpack.io' }
     }
 
-    // Allow third-party libraries to use RN-internal APIs marked @UnstableReactNativeAPI
-    plugins.withId("org.jetbrains.kotlin.android") {
+    // Allow third-party libraries to use RN-internal @FrameworkAPI-annotated APIs
+    afterEvaluate {
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
-                freeCompilerArgs += ["-opt-in=com.facebook.react.common.annotations.UnstableReactNativeAPI"]
+                freeCompilerArgs += ["-opt-in=com.facebook.react.common.annotations.FrameworkAPI"]
             }
         }
     }
