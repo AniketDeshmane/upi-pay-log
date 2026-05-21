@@ -30,11 +30,9 @@ allprojects {
 
 // Allow third-party libraries to use @FrameworkAPI-annotated RN internals
 subprojects {
-    afterEvaluate {
-        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-            kotlinOptions {
-                freeCompilerArgs += ["-opt-in=com.facebook.react.common.annotations.FrameworkAPI"]
-            }
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+        kotlinOptions {
+            freeCompilerArgs += ["-opt-in=com.facebook.react.common.annotations.FrameworkAPI"]
         }
     }
 }
