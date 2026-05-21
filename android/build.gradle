@@ -26,8 +26,10 @@ allprojects {
         mavenCentral()
         maven { url 'https://www.jitpack.io' }
     }
+}
 
-    // Allow third-party libraries to use RN-internal @FrameworkAPI-annotated APIs
+// Allow third-party libraries to use @FrameworkAPI-annotated RN internals
+subprojects {
     afterEvaluate {
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
             kotlinOptions {
