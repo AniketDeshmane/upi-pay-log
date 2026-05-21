@@ -14,7 +14,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       - uses: actions/setup-java@v4
         with:
@@ -25,7 +24,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install JS dependencies
-        run: npm ci
+        run: npm install
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
