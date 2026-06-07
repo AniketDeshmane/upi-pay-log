@@ -201,22 +201,28 @@ export function MainScreen({navigation}: Props) {
       </View>
 
       <Modal visible={scanning} animationType="slide" onRequestClose={() => setScanning(false)}>
-        <QrScanner onScan={handleQrScan} onClose={() => setScanning(false)} />
-        <TouchableOpacity
-          style={styles.closeModal}
-          onPress={() => setScanning(false)}>
-          <Text style={styles.closeModalText}>Cancel</Text>
-        </TouchableOpacity>
+        {scanning && (
+          <>
+            <QrScanner onScan={handleQrScan} onClose={() => setScanning(false)} />
+            <TouchableOpacity
+              style={styles.closeModal}
+              onPress={() => setScanning(false)}>
+              <Text style={styles.closeModalText}>Cancel</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </Modal>
 
       <Modal visible={capturingPhoto} animationType="slide" onRequestClose={() => setCapturingPhoto(false)}>
-        <PhotoCapture
-          onPhoto={(uri) => {
-            setPhotoUri(uri);
-            setCapturingPhoto(false);
-          }}
-          onClose={() => setCapturingPhoto(false)}
-        />
+        {capturingPhoto && (
+          <PhotoCapture
+            onPhoto={(uri) => {
+              setPhotoUri(uri);
+              setCapturingPhoto(false);
+            }}
+            onClose={() => setCapturingPhoto(false)}
+          />
+        )}
       </Modal>
     </SafeAreaView>
   );
