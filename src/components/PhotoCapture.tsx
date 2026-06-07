@@ -1,6 +1,6 @@
-import React, {useState, useRef} from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {StyleSheet, View, Text, TouchableOpacity, Image} from 'react-native';
-import {Camera, useCameraDevice} from 'react-native-vision-camera';
+import {Camera, useCameraDevice, useCameraPermission} from 'react-native-vision-camera';
 import {colors} from '../theme/colors';
 
 interface Props {
@@ -22,10 +22,26 @@ export function PhotoCapture({onPhoto, onClose}: Props) {
     }
   }
 
+  const {hasPermission, requestPermission} = useCameraPermission();
+
+  useEffect(() => {
+    if (!hasPermission) {
+      requestPermission();
+    }
+  }, [hasPermission, requestPermission]);
+
   if (!device) {
     return (
       <View style={styles.center}>
         <Text style={styles.error}>No camera found</Text>
+      </View>
+    );
+  }
+
+  if (!hasPermission) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.error}>Requesting camera permission...</Text>
       </View>
     );
   }

@@ -4,6 +4,7 @@ import {
   Camera,
   useCameraDevice,
   useCodeScanner,
+  useCameraPermission,
 } from 'react-native-vision-camera';
 import {colors} from '../theme/colors';
 
@@ -25,14 +26,26 @@ export function QrScanner({onScan, onClose}: Props) {
     },
   });
 
+  const {hasPermission, requestPermission} = useCameraPermission();
+
   useEffect(() => {
-    Camera.requestCameraPermission();
-  }, []);
+    if (!hasPermission) {
+      requestPermission();
+    }
+  }, [hasPermission, requestPermission]);
 
   if (!device) {
     return (
       <View style={styles.center}>
         <Text style={styles.error}>No camera found</Text>
+      </View>
+    );
+  }
+
+  if (!hasPermission) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.error}>Requesting camera permission...</Text>
       </View>
     );
   }
