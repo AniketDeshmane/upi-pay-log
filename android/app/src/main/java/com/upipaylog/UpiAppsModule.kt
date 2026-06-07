@@ -5,6 +5,8 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.net.Uri
 import android.util.Base64
+import androidx.core.content.FileProvider
+import java.io.File
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -52,6 +54,33 @@ class UpiAppsModule(private val reactContext: ReactApplicationContext) :
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             intent.setPackage(packageName)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            reactContext.startActivity(intent)
+            promise.resolve(null)
+        } catch (e: Exception) {
+            promise.reject("ERR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun shareToWhatsApp(imagePath: String, message: String, phone: String, promise: Promise) {
+        try {
+            val file = File(imagePath.replace("file://", ""))
+            val uri: Uri = FileProvider.getUriForFile(
+                reactContext,
+                "${reactContext.packageName}.provider",
+                file
+            )
+
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "image/*"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_TEXT, message)
+                putExtra("jid", "$phone@s.whatsapp.net")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                setPackage("com.whatsapp")
+            }
+
             reactContext.startActivity(intent)
             promise.resolve(null)
         } catch (e: Exception) {

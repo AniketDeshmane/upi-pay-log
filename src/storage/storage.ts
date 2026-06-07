@@ -14,6 +14,8 @@ const KEYS = {
   DEFAULT_UPI_PACKAGE: 'default_upi_package',
   WHATSAPP_NUMBER: 'whatsapp_number',
   TRANSACTIONS: 'transactions',
+  PHOTO_MODE: 'photo_mode',
+  ASK_EVERY_TIME: 'ask_every_time',
 } as const;
 
 export async function isSetupComplete(): Promise<boolean> {
@@ -39,6 +41,25 @@ export async function getWhatsAppNumber(): Promise<string> {
 
 export async function setWhatsAppNumber(number: string): Promise<void> {
   await AsyncStorage.setItem(KEYS.WHATSAPP_NUMBER, number);
+}
+
+export async function getPhotoMode(): Promise<'off' | 'optional' | 'required'> {
+  const val = await AsyncStorage.getItem(KEYS.PHOTO_MODE);
+  if (val === 'optional' || val === 'required') return val;
+  return 'off';
+}
+
+export async function setPhotoMode(mode: 'off' | 'optional' | 'required'): Promise<void> {
+  await AsyncStorage.setItem(KEYS.PHOTO_MODE, mode);
+}
+
+export async function getAskEveryTime(): Promise<boolean> {
+  const val = await AsyncStorage.getItem(KEYS.ASK_EVERY_TIME);
+  return val !== 'false'; // default true
+}
+
+export async function setAskEveryTime(ask: boolean): Promise<void> {
+  await AsyncStorage.setItem(KEYS.ASK_EVERY_TIME, ask ? 'true' : 'false');
 }
 
 export async function getTransactions(): Promise<Transaction[]> {

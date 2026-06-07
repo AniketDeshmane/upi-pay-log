@@ -7,11 +7,18 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  Switch,
 } from 'react-native';
 import {colors} from '../theme/colors';
 import {UpiAppPicker} from '../components/UpiAppPicker';
 import {getInstalledUpiApps, type UpiApp} from '../native/UpiApps';
-import {markSetupComplete, setDefaultUpiPackage, setWhatsAppNumber} from '../storage/storage';
+import {
+  markSetupComplete,
+  setDefaultUpiPackage,
+  setWhatsAppNumber,
+  setAskEveryTime,
+  setPhotoMode,
+} from '../storage/storage';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/RootNavigator';
 
@@ -22,6 +29,7 @@ export function SetupScreen({navigation}: Props) {
   const [apps, setApps] = useState<UpiApp[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPkg, setSelectedPkg] = useState('ask');
+  const [askEveryTime, setAskEveryTimeState] = useState(true);
   const [phone, setPhone] = useState('');
 
   useEffect(() => {
@@ -39,6 +47,8 @@ export function SetupScreen({navigation}: Props) {
     }
     await setDefaultUpiPackage(selectedPkg);
     await setWhatsAppNumber(cleaned);
+    await setAskEveryTime(askEveryTime);
+    await setPhotoMode('optional'); // Default to optional photo mode
     await markSetupComplete();
     navigation.replace('Main');
   }
@@ -48,13 +58,28 @@ export function SetupScreen({navigation}: Props) {
       <Text style={styles.title}>Welcome to UPI Pay Log</Text>
       {step === 1 ? (
         <>
-          <Text style={styles.subtitle}>Choose your default UPI app</Text>
-          <UpiAppPicker
-            apps={apps}
-            loading={loading}
-            selected={selectedPkg}
-            onSelect={setSelectedPkg}
-          />
+          <View style={styles.switchRow}>
+            <Text style={styles.subtitleNoMargin}>Ask every time to pick UPI App</Text>
+            <Switch
+              value={askEveryTime}
+              onValueChange={setAskEveryTimeState}
+              trackColor={{false: colors.surfaceElevated, true: colors.primaryDim}}
+              thumbColor={askEveryTime ? colors.primary : colors.textDim}
+            />
+          </View>
+          
+          {!askEveryTime && (
+            <>
+              <Text style={styles.subtitle}>Select Dedicated UPI App</Text>
+              <UpiAppPicker
+                apps={apps}
+                loading={loading}
+                selected={selectedPkg}
+                onSelect={setSelectedPkg}
+              />
+            </>
+          )}
+
           <TouchableOpacity style={styles.btn} onPress={() => setStep(2)}>
             <Text style={styles.btnText}>Next</Text>
           </TouchableOpacity>
@@ -88,6 +113,8 @@ const styles = StyleSheet.create({
   scroll: {flex: 1, backgroundColor: colors.background},
   content: {padding: 24, paddingTop: 60},
   title: {fontSize: 26, fontWeight: '700', color: colors.text, marginBottom: 8},
+  switchRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, marginTop: 24},
+  subtitleNoMargin: {fontSize: 16, color: colors.textSecondary},
   subtitle: {fontSize: 16, color: colors.textSecondary, marginBottom: 20, marginTop: 24},
   hint: {fontSize: 13, color: colors.textDim, marginBottom: 12, lineHeight: 20},
   input: {

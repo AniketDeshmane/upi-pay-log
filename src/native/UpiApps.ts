@@ -15,3 +15,7 @@ export function getInstalledUpiApps(): Promise<UpiApp[]> {
 export function launchUpiIntent(packageName: string, url: string): Promise<void> {
   return UpiApps.launchUpiIntent(packageName, url);
 }
+
+export function shareToWhatsApp(imagePath: string, message: string, phone: string): Promise<void> {
+  return UpiApps.shareToWhatsApp(imagePath, message, phone);
+}

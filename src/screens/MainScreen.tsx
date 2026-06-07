@@ -10,15 +10,19 @@ import {
   Image,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {useFocusEffect} from '@react-navigation/native';
 import {colors} from '../theme/colors';
 import {QrScanner} from '../components/QrScanner';
+import {PhotoCapture} from '../components/PhotoCapture';
 import {AmountInput} from '../components/AmountInput';
 import {parseUpiQr, buildUpiUrl, buildWhatsAppUrl} from '../utils/upi';
-import {launchUpiIntent, getInstalledUpiApps} from '../native/UpiApps';
+import {launchUpiIntent, getInstalledUpiApps, shareToWhatsApp} from '../native/UpiApps';
 import {
   getDefaultUpiPackage,
   getWhatsAppNumber,
   saveTransaction,
+  getAskEveryTime,
+  getPhotoMode,
 } from '../storage/storage';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/RootNavigator';
@@ -27,11 +31,25 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Main'>;
 
 export function MainScreen({navigation}: Props) {
   const [scanning, setScanning] = useState(false);
+  const [capturingPhoto, setCapturingPhoto] = useState(false);
+  const [photoMode, setPhotoModeState] = useState<'off' | 'optional' | 'required'>('off');
   const [vpa, setVpa] = useState('');
   const [payeeName, setPayeeName] = useState('');
   const [amount, setAmount] = useState('');
   const [photoUri, setPhotoUri] = useState<string | undefined>();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // Auto-open scanner on mount
+    const timer = setTimeout(() => setScanning(true), 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      getPhotoMode().then(setPhotoModeState);
+    }, [])
+  );
 
   function handleQrScan(raw: string) {
     const parsed = parseUpiQr(raw);
@@ -65,10 +83,11 @@ export function MainScreen({navigation}: Props) {
     await saveTransaction(tx);
 
     const upiUrl = buildUpiUrl(vpa, payeeName, amount);
+    const askEveryTime = await getAskEveryTime();
     const pkg = await getDefaultUpiPackage();
 
     try {
-      if (pkg !== 'ask') {
+      if (!askEveryTime && pkg !== 'ask') {
         await launchUpiIntent(pkg, upiUrl);
       } else {
         await Linking.openURL(upiUrl);
@@ -81,11 +100,24 @@ export function MainScreen({navigation}: Props) {
     if (phone) {
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(async () => {
-        const waUrl = buildWhatsAppUrl(phone, payeeName, vpa, amount);
-        try {
-          await Linking.openURL(waUrl);
-        } catch {
-          /* WhatsApp not installed */
+        if (photoUri) {
+          const now = new Date();
+          const dateStr = now.toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'});
+          const timeStr = now.toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: false});
+          const message = `\u{1F4B8} ₹${amount} to ${payeeName}\n\u{1F4C5} ${dateStr}, ${timeStr}\n\u{1F3F7}️ ${vpa}`;
+          
+          try {
+            await shareToWhatsApp(photoUri, message, phone);
+          } catch {
+            // fallback if something fails
+          }
+        } else {
+          const waUrl = buildWhatsAppUrl(phone, payeeName, vpa, amount);
+          try {
+            await Linking.openURL(waUrl);
+          } catch {
+            /* WhatsApp not installed */
+          }
         }
       }, 10000);
     }
@@ -133,18 +165,39 @@ export function MainScreen({navigation}: Props) {
           <AmountInput value={amount} onChange={setAmount} />
         </View>
 
+        {photoMode !== 'off' && vpa !== '' && amount !== '' && !photoUri && (
+          <TouchableOpacity style={styles.photoBtn} onPress={() => setCapturingPhoto(true)}>
+            <Text style={styles.photoBtnIcon}>📸</Text>
+            <Text style={styles.photoBtnText}>
+              Take Photo {photoMode === 'required' ? '(Required)' : '(Optional)'}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {photoUri && (
+          <View style={styles.photoPreviewRow}>
+            <Image source={{uri: photoUri}} style={styles.photoThumbnail} />
+            <TouchableOpacity style={styles.retakeBtn} onPress={() => setCapturingPhoto(true)}>
+              <Text style={styles.retakeBtnText}>Retake Photo</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <TouchableOpacity
-          style={[styles.payBtn, (!vpa || !amount) && styles.payBtnDisabled]}
+          style={[
+            styles.payBtn,
+            (!vpa || !amount || (photoMode === 'required' && !photoUri)) && styles.payBtnDisabled
+          ]}
           onPress={handlePay}
-          disabled={!vpa || !amount}>
+          disabled={!vpa || !amount || (photoMode === 'required' && !photoUri)}>
           <Text style={styles.payBtnText}>Pay</Text>
         </TouchableOpacity>
 
-        {vpa && (
+        {vpa ? (
           <TouchableOpacity style={styles.rescanBtn} onPress={() => setScanning(true)}>
             <Text style={styles.rescanBtnText}>Rescan QR</Text>
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
 
       <Modal visible={scanning} animationType="slide" onRequestClose={() => setScanning(false)}>
@@ -154,6 +207,16 @@ export function MainScreen({navigation}: Props) {
           onPress={() => setScanning(false)}>
           <Text style={styles.closeModalText}>Cancel</Text>
         </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={capturingPhoto} animationType="slide" onRequestClose={() => setCapturingPhoto(false)}>
+        <PhotoCapture
+          onPhoto={(uri) => {
+            setPhotoUri(uri);
+            setCapturingPhoto(false);
+          }}
+          onClose={() => setCapturingPhoto(false)}
+        />
       </Modal>
     </SafeAreaView>
   );
@@ -213,10 +276,41 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 40,
     alignSelf: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 50,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
   },
-  closeModalText: {color: colors.white, fontSize: 16},
+  closeModalText: {color: 'white', fontSize: 16, fontWeight: '600'},
+  photoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceElevated,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  photoBtnIcon: {fontSize: 20, marginRight: 8},
+  photoBtnText: {color: colors.textSecondary, fontSize: 16, fontWeight: '600'},
+  photoPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    backgroundColor: colors.surface,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  photoThumbnail: {width: 60, height: 60, borderRadius: 8, marginRight: 16},
+  retakeBtn: {
+    backgroundColor: colors.surfaceElevated,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  retakeBtnText: {color: colors.textSecondary, fontSize: 14, fontWeight: '600'},
 });

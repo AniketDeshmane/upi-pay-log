@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  Switch,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {colors} from '../theme/colors';
@@ -17,6 +18,10 @@ import {
   getWhatsAppNumber,
   setDefaultUpiPackage,
   setWhatsAppNumber,
+  getAskEveryTime,
+  setAskEveryTime,
+  getPhotoMode,
+  setPhotoMode,
 } from '../storage/storage';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/RootNavigator';
@@ -28,12 +33,16 @@ export function SettingsScreen({navigation}: Props) {
   const [loading, setLoading] = useState(true);
   const [selectedPkg, setSelectedPkg] = useState('ask');
   const [phone, setPhone] = useState('');
+  const [askEveryTime, setAskEveryTimeState] = useState(true);
+  const [photoMode, setPhotoModeState] = useState<'off' | 'optional' | 'required'>('off');
 
   useEffect(() => {
     Promise.all([
       getInstalledUpiApps().then(setApps).catch(() => setApps([])),
       getDefaultUpiPackage().then(setSelectedPkg),
       getWhatsAppNumber().then(setPhone),
+      getAskEveryTime().then(setAskEveryTimeState),
+      getPhotoMode().then(setPhotoModeState),
     ]).finally(() => setLoading(false));
   }, []);
 
@@ -45,19 +54,49 @@ export function SettingsScreen({navigation}: Props) {
     }
     await setDefaultUpiPackage(selectedPkg);
     await setWhatsAppNumber(cleaned);
+    await setAskEveryTime(askEveryTime);
+    await setPhotoMode(photoMode);
     Alert.alert('Saved', 'Settings updated.', [{text: 'OK', onPress: () => navigation.goBack()}]);
   }
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.section}>Default UPI App</Text>
-        <UpiAppPicker
-          apps={apps}
-          loading={loading}
-          selected={selectedPkg}
-          onSelect={setSelectedPkg}
-        />
+        <View style={styles.switchRow}>
+          <Text style={styles.sectionNoMargin}>Ask every time to choose UPI App</Text>
+          <Switch
+            value={askEveryTime}
+            onValueChange={setAskEveryTimeState}
+            trackColor={{false: colors.surfaceElevated, true: colors.primaryDim}}
+            thumbColor={askEveryTime ? colors.primary : colors.textDim}
+          />
+        </View>
+
+        {!askEveryTime && (
+          <>
+            <Text style={styles.section}>Dedicated UPI App</Text>
+            <UpiAppPicker
+              apps={apps}
+              loading={loading}
+              selected={selectedPkg}
+              onSelect={setSelectedPkg}
+            />
+          </>
+        )}
+
+        <Text style={styles.section}>Item Photo (for WhatsApp)</Text>
+        <View style={styles.modeRow}>
+          {(['off', 'optional', 'required'] as const).map(mode => (
+            <TouchableOpacity
+              key={mode}
+              style={[styles.modeBtn, photoMode === mode && styles.modeBtnActive]}
+              onPress={() => setPhotoModeState(mode)}>
+              <Text style={[styles.modeText, photoMode === mode && styles.modeTextActive]}>
+                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         <Text style={styles.section}>WhatsApp Number</Text>
         <Text style={styles.hint}>With country code, no + sign (e.g. 919876543210)</Text>
@@ -87,6 +126,8 @@ export function SettingsScreen({navigation}: Props) {
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: colors.background},
   content: {padding: 20},
+  switchRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, marginBottom: 12},
+  sectionNoMargin: {fontSize: 15, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8},
   section: {fontSize: 15, fontWeight: '700', color: colors.textSecondary, marginTop: 24, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.8},
   hint: {fontSize: 12, color: colors.textDim, marginBottom: 10},
   input: {
@@ -100,6 +141,22 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 12,
   },
+  modeRow: {flexDirection: 'row', gap: 8, marginBottom: 12},
+  modeBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+  },
+  modeBtnActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryDim + '40',
+  },
+  modeText: {color: colors.textSecondary, fontWeight: '600'},
+  modeTextActive: {color: colors.primary},
   btn: {
     backgroundColor: colors.primary,
     borderRadius: 12,

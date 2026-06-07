@@ -23,14 +23,17 @@ export function UpiAppPicker({apps, loading, selected, onSelect}: Props) {
     return <ActivityIndicator color={colors.primary} style={{marginVertical: 24}} />;
   }
 
-  const options: Array<{packageName: string; appName: string; iconBase64?: string}> = [
-    {packageName: 'ask', appName: 'Ask every time'},
-    ...apps,
-  ];
+  if (apps.length === 0) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>No UPI apps found</Text>
+      </View>
+    );
+  }
 
   return (
     <FlatList
-      data={options}
+      data={apps}
       keyExtractor={item => item.packageName}
       scrollEnabled={false}
       renderItem={({item}) => {
@@ -74,4 +77,6 @@ const styles = StyleSheet.create({
   iconPlaceholder: {width: 36, height: 36, borderRadius: 8, marginRight: 12, backgroundColor: colors.border},
   label: {flex: 1, color: colors.text, fontSize: 16},
   check: {color: colors.primary, fontSize: 18, fontWeight: 'bold'},
+  empty: {padding: 16, alignItems: 'center'},
+  emptyText: {color: colors.textDim},
 });
