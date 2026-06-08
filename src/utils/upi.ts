@@ -23,6 +23,8 @@ export function buildUpiUrl(vpa: string, payeeName: string, amount: string): str
     pn: payeeName,
     am: amount,
     cu: 'INR',
+    tn: 'Payment via UPI Pay Log',
+    tr: 'TR' + Date.now().toString(),
   });
   return `upi://pay?${params.toString()}`;
 }

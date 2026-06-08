@@ -1,4 +1,4 @@
-import React, {useState, useRef} from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {
   View,
   Text,
@@ -36,6 +36,7 @@ export function MainScreen({navigation}: Props) {
   const [vpa, setVpa] = useState('');
   const [payeeName, setPayeeName] = useState('');
   const [amount, setAmount] = useState('');
+  const [rawQr, setRawQr] = useState('');
   const [photoUri, setPhotoUri] = useState<string | undefined>();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -59,10 +60,11 @@ export function MainScreen({navigation}: Props) {
     }
     setVpa(parsed.vpa);
     setPayeeName(parsed.payeeName);
+    setRawQr(raw);
   }
 
   async function handlePay() {
-    if (!vpa) {
+    if (!vpa || !rawQr) {
       Alert.alert('Scan QR first', 'Please scan a UPI QR code before paying.');
       return;
     }
@@ -82,7 +84,13 @@ export function MainScreen({navigation}: Props) {
     };
     await saveTransaction(tx);
 
-    const upiUrl = buildUpiUrl(vpa, payeeName, amount);
+    let upiUrl = rawQr;
+    if (upiUrl.includes('&am=')) {
+      upiUrl = upiUrl.replace(/&am=[^&]+/, `&am=${amount}`);
+    } else {
+      upiUrl += `&am=${amount}`;
+    }
+
     const askEveryTime = await getAskEveryTime();
     const pkg = await getDefaultUpiPackage();
 
@@ -125,6 +133,7 @@ export function MainScreen({navigation}: Props) {
     setVpa('');
     setPayeeName('');
     setAmount('');
+    setRawQr('');
     setPhotoUri(undefined);
   }
 

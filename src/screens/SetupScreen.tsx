@@ -41,7 +41,7 @@ export function SetupScreen({navigation}: Props) {
 
   async function finish() {
     const cleaned = phone.replace(/\D/g, '');
-    if (cleaned.length < 10) {
+    if (phone.length > 0 && cleaned.length < 10) {
       Alert.alert('Invalid number', 'Enter your WhatsApp number with country code, e.g. 919876543210');
       return;
     }
