@@ -19,3 +19,11 @@ export function launchUpiIntent(packageName: string, url: string): Promise<void>
 export function shareToWhatsApp(imagePath: string, message: string, phone: string): Promise<void> {
   return UpiApps.shareToWhatsApp(imagePath, message, phone);
 }
+
+export function launchApp(packageName: string): Promise<void> {
+  return UpiApps.launchApp(packageName);
+}
+
+export function generateAndSaveQr(qrData: string): Promise<string> {
+  return UpiApps.generateAndSaveQr(qrData);
+}

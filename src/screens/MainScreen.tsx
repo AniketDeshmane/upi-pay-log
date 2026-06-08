@@ -16,7 +16,7 @@ import {QrScanner} from '../components/QrScanner';
 import {PhotoCapture} from '../components/PhotoCapture';
 import {AmountInput} from '../components/AmountInput';
 import {parseUpiQr, buildUpiUrl, buildWhatsAppUrl} from '../utils/upi';
-import {launchUpiIntent, getInstalledUpiApps, shareToWhatsApp} from '../native/UpiApps';
+import {launchUpiIntent, getInstalledUpiApps, shareToWhatsApp, generateAndSaveQr, launchApp} from '../native/UpiApps';
 import {
   getDefaultUpiPackage,
   getWhatsAppNumber,
@@ -91,17 +91,31 @@ export function MainScreen({navigation}: Props) {
       upiUrl += `&am=${amount}`;
     }
 
+    try {
+      await generateAndSaveQr(upiUrl);
+    } catch (e: any) {
+      Alert.alert('QR Generation Failed', e.message || 'Could not generate QR code image.');
+      return;
+    }
+
     const askEveryTime = await getAskEveryTime();
     const pkg = await getDefaultUpiPackage();
 
     try {
       if (!askEveryTime && pkg !== 'ask') {
-        await launchUpiIntent(pkg, upiUrl);
+        await launchApp(pkg);
+        setTimeout(() => {
+          Alert.alert('QR Code Ready', 'A crisp digital QR code has been saved to your gallery. Please use the "Scan any QR" -> "Gallery" option in your UPI app to select it.');
+        }, 1000);
       } else {
-        await Linking.openURL(upiUrl);
+        Alert.alert(
+          'Default App Required',
+          'A default UPI App must be selected in Settings to use the Gallery QR scan workaround.'
+        );
+        return;
       }
     } catch {
-      Alert.alert('Could not open UPI app', 'Make sure a UPI app is installed.');
+      Alert.alert('Could not open UPI app', 'Make sure the default UPI app is installed.');
     }
 
     const phone = await getWhatsAppNumber();
