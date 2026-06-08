@@ -1,0 +1,23 @@
+{
+  "name": "React Native Android",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "node",
+  "forwardPorts": [8081],
+  "runArgs": [
+    "--add-host=host.docker.internal:host-gateway"
+  ],
+  "containerEnv": {
+    "ADB_SERVER_SOCKET": "tcp:host.docker.internal:5037"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "msjsdiag.vscode-react-native"
+      ]
+    }
+  }
+}

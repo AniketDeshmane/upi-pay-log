@@ -7,6 +7,7 @@ export interface Transaction {
   vpa: string;
   amount: string;
   photoUri?: string;
+  comment?: string;
 }
 
 const KEYS = {

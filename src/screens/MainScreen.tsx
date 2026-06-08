@@ -8,6 +8,7 @@ import {
   Linking,
   StyleSheet,
   Image,
+  TextInput,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
@@ -16,7 +17,7 @@ import {QrScanner} from '../components/QrScanner';
 import {PhotoCapture} from '../components/PhotoCapture';
 import {AmountInput} from '../components/AmountInput';
 import {parseUpiQr, buildUpiUrl, buildWhatsAppUrl} from '../utils/upi';
-import {launchUpiIntent, getInstalledUpiApps, shareToWhatsApp, generateAndSaveQr, launchApp} from '../native/UpiApps';
+import {launchUpiIntent, getInstalledUpiApps, shareToWhatsApp, generateAndSaveQr, launchApp, bringAppToForeground} from '../native/UpiApps';
 import {
   getDefaultUpiPackage,
   getWhatsAppNumber,
@@ -29,6 +30,8 @@ import type {RootStackParamList} from '../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Main'>;
 
+let hasPerformedPreAuth = false;
+
 export function MainScreen({navigation}: Props) {
   const [scanning, setScanning] = useState(false);
   const [capturingPhoto, setCapturingPhoto] = useState(false);
@@ -36,11 +39,23 @@ export function MainScreen({navigation}: Props) {
   const [vpa, setVpa] = useState('');
   const [payeeName, setPayeeName] = useState('');
   const [amount, setAmount] = useState('');
+  const [comment, setComment] = useState('');
   const [rawQr, setRawQr] = useState('');
   const [photoUri, setPhotoUri] = useState<string | undefined>();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (!hasPerformedPreAuth) {
+      hasPerformedPreAuth = true;
+      getDefaultUpiPackage().then(pkg => {
+        if (pkg && pkg !== 'ask') {
+          launchApp(pkg).then(() => {
+            setTimeout(() => bringAppToForeground(), 2500);
+          }).catch(() => {});
+        }
+      });
+    }
+
     // Auto-open scanner on mount
     const timer = setTimeout(() => setScanning(true), 500);
     return () => clearTimeout(timer);
@@ -81,6 +96,7 @@ export function MainScreen({navigation}: Props) {
       vpa,
       amount,
       photoUri,
+      comment,
     };
     await saveTransaction(tx);
 
@@ -126,17 +142,19 @@ export function MainScreen({navigation}: Props) {
           const now = new Date();
           const dateStr = now.toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'});
           const timeStr = now.toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: false});
-          const message = `\u{1F4B8} ₹${amount} to ${payeeName}\n\u{1F4C5} ${dateStr}, ${timeStr}\n\u{1F3F7}️ ${vpa}`;
+          const message = `\u{1F4B8} \u20B9${amount} to ${payeeName}\n\u{1F4C5} ${dateStr}, ${timeStr}\n\u{1F3F7}\uFE0F ${vpa}${comment ? `\n\u{1F4DD} ${comment}` : ''}`;
           
           try {
             await shareToWhatsApp(photoUri, message, phone);
+            setTimeout(() => bringAppToForeground(), 3000);
           } catch {
             // fallback if something fails
           }
         } else {
-          const waUrl = buildWhatsAppUrl(phone, payeeName, vpa, amount);
+          const waUrl = buildWhatsAppUrl(phone, payeeName, vpa, amount) + (comment ? `\n\u{1F4DD} ${comment}` : '');
           try {
             await Linking.openURL(waUrl);
+            setTimeout(() => bringAppToForeground(), 3000);
           } catch {
             /* WhatsApp not installed */
           }
@@ -147,6 +165,7 @@ export function MainScreen({navigation}: Props) {
     setVpa('');
     setPayeeName('');
     setAmount('');
+    setComment('');
     setRawQr('');
     setPhotoUri(undefined);
   }
@@ -187,6 +206,15 @@ export function MainScreen({navigation}: Props) {
         <View style={styles.amountContainer}>
           <AmountInput value={amount} onChange={setAmount} />
         </View>
+
+        <TextInput
+          style={styles.commentInput}
+          placeholder="Add a comment (optional)"
+          placeholderTextColor={colors.textSecondary}
+          value={comment}
+          onChangeText={setComment}
+          multiline
+        />
 
         {photoMode !== 'off' && vpa !== '' && amount !== '' && !photoUri && (
           <TouchableOpacity style={styles.photoBtn} onPress={() => setCapturingPhoto(true)}>
@@ -290,7 +318,19 @@ const styles = StyleSheet.create({
   },
   scanBtnIcon: {fontSize: 40, marginBottom: 10},
   scanBtnText: {fontSize: 16, color: colors.textSecondary, fontWeight: '600'},
-  amountContainer: {marginBottom: 24},
+  amountContainer: {marginBottom: 16},
+  commentInput: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    color: colors.text,
+    padding: 16,
+    fontSize: 16,
+    marginBottom: 24,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
   payBtn: {
     backgroundColor: colors.primary,
     borderRadius: 14,

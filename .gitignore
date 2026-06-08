@@ -53,3 +53,7 @@ fastlane/test_output
 
 # testing
 /coverage
+
+android/gradle/wrapper/gradle-8.6-all.zip
+android/jdk.zip
+app_icon.png

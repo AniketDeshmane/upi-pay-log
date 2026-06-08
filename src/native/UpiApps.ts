@@ -27,3 +27,7 @@ export function launchApp(packageName: string): Promise<void> {
 export function generateAndSaveQr(qrData: string): Promise<string> {
   return UpiApps.generateAndSaveQr(qrData);
 }
+
+export function bringAppToForeground(): Promise<void> {
+  return UpiApps.bringAppToForeground();
+}
